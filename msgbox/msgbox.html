@@ -1,0 +1,236 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	
+	<!-- Bootstrap Core CSS -->
+    <link href="resources/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	    
+    <!-- Msgbox CSS -->
+    <link href="resources/others/css/msgbox.css" rel="stylesheet">
+    
+	<!-- jQuery -->
+    <script src="resources/jquery/js/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="resources/bootstrap/js/bootstrap.min.js"></script>
+    
+    <!-- Bootstrap Core JavaScript -->
+    <script src="resources/others/js/moment.min.js"></script>
+
+	<script>
+	
+		function findGetParameter(parameterName) {
+			var result = null,
+				tmp = [];
+			var items = location.search.substr(1).split("&");
+			for (var index = 0; index < items.length; index++) {
+				tmp = items[index].split("=");
+				if (tmp[0] === parameterName) result = decodeURIComponent(tmp[1]);
+			}
+			return result;
+		}
+
+		//document.cookie = "fioUserId=${fioUserId}";
+		var startingIndex = getCookie("startingIndex");
+		if (startingIndex==null){
+			startingIndex = 1;
+			document.cookie = "startingIndex="+startingIndex;
+		}
+		//var unreadElements = getCookie("unreadElements");
+    	//if (unreadElements != null && Number(unreadElements)>0){
+    	//	$(".checked").html("<span class='badge-error'>"+unreadElements+"</span>"+$(".checked").html());
+    	//}
+				
+		function loadList(index){
+			//startingIndex = index;
+			//var data = JSON.parse("{\"page\":{\"content\":[{\"inAppId\":109,\"inAppHdr\":\"fubon header\\r\\nfubon\",\"inAppMsg\":\"<p>fubon msg</p>\",\"inAppTemplateId\":0,\"inAppScheduleDate\":1496642400000,\"firstCreated\":1496305630000,\"lastUpdated\":1496372859000},{\"inAppId\":108,\"inAppHdr\":\"fubonContent1\",\"inAppMsg\":\"<p>fubonContent1</p><p>fubonContent2</p><p>fubonContent3</p>\",\"inAppScheduleDate\":1496642400000,\"firstCreated\":1496303556000,\"lastUpdated\":1496311967000},{\"inAppId\":107,\"inAppScheduleDate\":1496642400000,\"firstCreated\":1496299867000,\"lastUpdated\":1496311274000},{\"inAppId\":106,\"inAppHdr\":\"in-app message hdr\",\"inAppMsg\":\"<p>content</p><p>1234</p>\",\"inAppTemplateId\":0,\"inAppScheduleDate\":1496642400000,\"firstCreated\":1496299729000,\"lastUpdated\":1496366339000}],\"last\":true,\"size\":4,\"number\":0,\"first\":true},\"currentPageNumber\":1}");
+			//var data = JSON.parse(json);
+			
+			$.ajax({
+				type: "GET",
+		        url: findGetParameter("json"),
+		        //data: {strIdx : index, fioUserId : getCookie("fioUserId")},
+		        //contentType: "application/json; charset=utf-8",
+		        success: function(responseText){
+					
+					var data = JSON.parse(responseText);
+					
+		        	document.cookie = "startingIndex="+data.currentPageNumber;
+					
+		        	if (data.page.last){
+		        		$("#btnLoadMore").hide();
+		        	}else{
+		        		$("#btnLoadMore").show();
+		        	}
+		        	
+					/*
+		        	var unreadElements = Number(data.unread);
+		        	if ( unreadElements > 0 && data.page.first){
+		        		document.cookie = "unreadElements="+unreadElements;
+		        		$(".checked").html("<span class='badge-error'>"+unreadElements+"</span>"+$(".checked").html());
+		        		initSegment();
+		        	}*/
+		        	
+		        	var activeIndex;
+		        	for (var idx in data.page.content) {
+		        		var message = data.page.content[idx];
+		        		var messageId = message.inAppId;
+		        		var heading = message.inAppHdr==null?"<p><br></p>":message.inAppHdr;
+		        		var summary = message.inAppMsg==null?"":message.inAppMsg;
+		        		var messageDate = moment.unix(message.firstCreated/1000).fromNow();
+
+
+		        		
+		        		var active = (messageId==getCookie("index"));
+		        		if (active){
+		        			activeIndex = Number(data.page.number)*Number(data.page.size)+idx;
+		        		}
+		        		
+		        		//replace the html tag of link	
+		        		var parseSummary = $.parseHTML(summary); 
+		        		for (var i = 0; i < parseSummary.length; i++) {
+		        			var element = parseSummary[i];
+		        			if ($(element).text().length>0){
+		        				summary = $(element).text();
+		        				break;
+		        			}else{
+		        				summary = "";
+		        			}
+		        		}
+		        		
+		        		$(".list-group").append("<a href='#"+messageId+"' class='list-group-item clearfix"+(active?" active":"")+"'>"+
+		        				"<div class='list-group-item-group'>"+
+		        				"<div class='list-group-item-body'>"+
+		        				"<div class='pull-right'>"+
+		        				"<small>"+messageDate+"</small>"+
+		        				"</div>"+
+								"<h4 class='list-group-item-heading'>"+heading+"</h4>"+
+								"<div class='pull-right'>"+						    	
+				    			"<span class='glyphicon glyphicon-chevron-right'></span>"+
+				    			"</div>"+	
+				    			"<p class='list-group-item-text'>"+summary+"</p></div>"+
+				    			"</div></a>");
+		        		 
+		        		
+		        	}
+		        	
+		        	if (activeIndex>0){
+		        		var height = Number($(".list-group-item").css("height").replace("px","")) * activeIndex;
+	        			document.getElementById("msglist").scrollTop = height ;
+	        		}
+		        	
+		        	$('.list-group-item').click(function(e) {
+				        e.preventDefault();
+
+				        $that = $(this);
+
+				        $that.parent().find('a').removeClass('active');
+				        $that.addClass('active');
+				        var href = $that.attr('href');
+				        var inAppId = href.replace("#","");
+				        //save to cookie
+				        document.cookie = "index="+inAppId;
+				        window.location.href = "msgdetail?inAppId="+inAppId  ;
+				    });
+		        	
+		        	if (Number(data.currentPageNumber)<lastStartingIndex){
+		        		loadList(Number(data.currentPageNumber)+1);
+		        	}
+		        	
+		        },
+		        failure: function(errMsg) {
+		            alert(errMsg);
+		        }
+		  	});
+			
+		}
+		
+		function getCookie(name) {
+			var nameEQ = name + "=";
+			//alert(document.cookie);
+			var ca = document.cookie.split(';');
+			for(var i=0;i < ca.length;i++) {
+			var c = ca[i];
+			while (c.charAt(0)==' ') c = c.substring(1);
+			if (c.indexOf(nameEQ) != -1) return c.substring(nameEQ.length,c.length);
+			}
+			return null;
+		} 
+		
+		var lastStartingIndex;
+		
+		$(document).ready(function(){
+			initSegment();
+		    var maxHeight = $(this).height();
+		    //fix the max-height after adding pre-scrollable class in div
+		    $("#msglist").css("max-height",maxHeight+"px");
+		    lastStartingIndex = startingIndex;
+		    loadList(1);
+			
+		    //change the layout to scrollable when item more than 3
+		    var maxWidth = $(this).width();
+		    var segmentItemCount = $(".segmented label").length; 
+		    if (segmentItemCount > 3){
+		    	var itemWidth = maxWidth / 3;
+		    	$(".segmented").css("overflow-x","auto");
+		    	$(".segmented").removeClass("flex-flow");
+		    	$(".segmented").css("flex-wrap","nowrap");
+		    	$(".segmented label").css("flex","0 0 auto");
+		    	$(".segmented label").css("width",itemWidth);
+		    }
+		});
+		
+		function moreLoad(){
+	    	startingIndex = Number(getCookie("startingIndex"))+1;		    	    	
+	    	loadList(startingIndex);
+	    }
+		
+		function initSegment(){
+			$(".segmented label input[type=radio]").each(function(){
+		        $(this).on("change", function(){
+		            if($(this).is(":checked")){
+		               $(this).parent().siblings().each(function(){
+		                    $(this).removeClass("checked");
+		                });
+		                $(this).parent().addClass("checked");
+		            }
+		        });
+		    });
+		}
+	</script>
+
+<title>Message Box</title>
+</head>
+<body>
+
+	
+		<nav class="navbar navbar-default navbar-fixed-top">
+			<div class="container">
+			    <div class="nav-header">
+					<div class="segmented">
+				    	<label class="checked"><input type="radio" name="segmented" checked /> 訊息</label>
+				    	<!--<label><input type="radio" name="segmented" /> Personal</label>-->
+				    	<label><input type="radio" name="segmented" /> 推介</label>
+					</div>
+					
+				</div>
+	        </div>
+			
+		</nav>
+				
+		<div id="msglist" class="pre-scrollable" style="padding-top:20px;">
+		<div class="msg-jumbotron">
+			<div class="list-group">
+			</div>
+			<div class="col-md-12 text-center"> 
+				<button id="btnLoadMore" type="button" class="btn btn-primary" onclick="moreLoad();">Load more message</button>
+			</div>			
+		</div>
+		</div>
+		
+	
+</body>
+</html>
